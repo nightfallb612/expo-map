@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
 import MapView, { Polyline } from "react-native-maps";
@@ -21,28 +21,31 @@ export default function App() {
     })();
   }, []);
   return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        provider={MapView.PROVIDER_MAPBOX}
-        customMapStyle={MAPBOX_STYLE}
-        zoomEnabled={true}
-        showsUserLocation={true}
-        initialRegion={{
-          latitude: 49.2303116,
-          longitude: -123.1205691,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        }}
-      >
-        <Polyline
-          coordinates={tisdallParkTrailCoordinates}
-          strokeColor="#B24112"
-          strokeWidth={6}
-        />
-      </MapView>
-      <Text>{JSON.stringify(location)}</Text>
-    </View>
+    <Fragment>
+      {location ? (
+        <View style={styles.container}>
+          <MapView
+            style={styles.map}
+            provider={MapView.PROVIDER_MAPBOX}
+            customMapStyle={MAPBOX_STYLE}
+            zoomEnabled={true}
+            showsUserLocation={true}
+            initialRegion={{
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            <Polyline
+              coordinates={tisdallParkTrailCoordinates}
+              strokeColor="#B24112"
+              strokeWidth={6}
+            />
+          </MapView>
+        </View>
+      ) : null}
+    </Fragment>
   );
 }
 
