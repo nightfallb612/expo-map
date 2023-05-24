@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import * as Location from "expo-location";
 import MapView, { Polyline } from "react-native-maps";
 
@@ -7,22 +7,50 @@ import MAPBOX_STYLE from "./utils/constants";
 import { tisdallParkTrailCoordinates } from "./db/trailCoords";
 
 export default function App() {
-  const [location, setLocation] = useState(null);
-  useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setErrorMsg("Permission to access location was denied");
-        return;
-      }
+  const [region, setRegion] = useState(null);
+  const [userPath, setUserPath] = useState([]);
 
-      let curLocation = await Location.getCurrentPositionAsync({});
-      setLocation(curLocation);
-    })();
+  useEffect(() => {
+    requestLocationPermission();
   }, []);
+
+  const requestLocationPermission = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        watchUserLocation();
+      } else {
+        setErrorMsg("Permission to access location was denied");
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  };
+
+  const watchUserLocation = () => {
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 300,
+        distanceInterval: 1,
+      },
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        const newCoordinate = {
+          latitude,
+          longitude,
+        };
+        // update coordinate
+        setRegion({ latitude, longitude });
+        setUserPath((prevPath) => [...prevPath, newCoordinate]);
+      }
+    );
+  };
+
   return (
     <Fragment>
-      {location ? (
+      {region && (
         <View style={styles.container}>
           <MapView
             style={styles.map}
@@ -31,12 +59,17 @@ export default function App() {
             zoomEnabled={true}
             showsUserLocation={true}
             initialRegion={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
+              latitude: region.latitude,
+              longitude: region.longitude,
               latitudeDelta: 0.0922,
               longitudeDelta: 0.0421,
             }}
           >
+            <Polyline
+              coordinates={userPath}
+              strokeWidth={6}
+              strokeColor="#00F"
+            />
             <Polyline
               coordinates={tisdallParkTrailCoordinates}
               strokeColor="#B24112"
@@ -44,7 +77,7 @@ export default function App() {
             />
           </MapView>
         </View>
-      ) : null}
+      )}
     </Fragment>
   );
 }
