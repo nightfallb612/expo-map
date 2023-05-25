@@ -1,14 +1,20 @@
 import React, { Fragment, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import * as Location from "expo-location";
 import MapView, { Polyline } from "react-native-maps";
 
 import MAPBOX_STYLE from "./utils/constants";
+import haversine from "haversine";
 import { tisdallParkTrailCoordinates } from "./db/trailCoords";
 
 export default function App() {
   const [region, setRegion] = useState(null);
-  const [userPath, setUserPath] = useState([]);
+  const [moveData, setMoveData] = useState({
+    kcal: 0,
+    distanceTravelled: 0,
+    routeCoordinates: [],
+    prevCoordinate: {},
+  });
 
   useEffect(() => {
     requestLocationPermission();
@@ -27,6 +33,15 @@ export default function App() {
     }
   };
 
+  const calcDistance = (prevCoordinate, newCoordinate) => {
+    return haversine(prevCoordinate, newCoordinate) || 0;
+  };
+
+  const calcKcal = (distanceDelta) => {
+    // Calculated as 7kcal per 0.1m
+    return (distanceDelta / 0.1) * 7;
+  };
+
   const watchUserLocation = () => {
     Location.watchPositionAsync(
       {
@@ -41,9 +56,18 @@ export default function App() {
           latitude,
           longitude,
         };
-        // update coordinate
         setRegion({ latitude, longitude });
-        setUserPath((prevPath) => [...prevPath, newCoordinate]);
+        setMoveData((prevMoveData) => ({
+          kcal: calcKcal(
+            prevMoveData.distanceTravelled +
+              calcDistance(prevMoveData.prevCoordinate, newCoordinate)
+          ),
+          distanceTravelled:
+            prevMoveData.distanceTravelled +
+            calcDistance(prevMoveData.prevCoordinate, newCoordinate),
+          routeCoordinates: [...prevMoveData.routeCoordinates, newCoordinate],
+          prevCoordinate: newCoordinate,
+        }));
       }
     );
   };
@@ -66,9 +90,9 @@ export default function App() {
             }}
           >
             <Polyline
-              coordinates={userPath}
+              coordinates={moveData.routeCoordinates}
               strokeWidth={6}
-              strokeColor="#00F"
+              strokeColor="#FF0"
             />
             <Polyline
               coordinates={tisdallParkTrailCoordinates}
@@ -76,6 +100,16 @@ export default function App() {
               strokeWidth={6}
             />
           </MapView>
+          <View style={{ position: "absolute", top: 80, left: 20 }}>
+            <Text style={{ fontSize: 24, fontWeight: "bold" }}>
+              {`Distance(Km): ${moveData.distanceTravelled.toFixed(3)}`}
+            </Text>
+          </View>
+          <View style={{ position: "absolute", top: 140, left: 20 }}>
+            <Text style={{ fontSize: 24, fontWeight: "bold" }}>
+              {`Cal(Kcal): ${moveData.kcal.toFixed(3)}`}
+            </Text>
+          </View>
         </View>
       )}
     </Fragment>
