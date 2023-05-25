@@ -45,9 +45,9 @@ export default function App() {
   const watchUserLocation = useCallback(() => {
     Location.watchPositionAsync(
       {
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
         timeInterval: 300,
-        distanceInterval: 1,
+        distanceInterval: 3,
       },
       (position) => {
         const { latitude, longitude } = position.coords;
