@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState, useCallback } from "react";
 import { StyleSheet, View, Text } from "react-native";
 import * as Location from "expo-location";
 import MapView, { Polyline } from "react-native-maps";
@@ -20,7 +20,7 @@ export default function App() {
     requestLocationPermission();
   }, []);
 
-  const requestLocationPermission = async () => {
+  const requestLocationPermission = useCallback(async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -31,18 +31,18 @@ export default function App() {
     } catch (err) {
       console.warn(err);
     }
-  };
+  }, []);
 
-  const calcDistance = (prevCoordinate, newCoordinate) => {
+  const calcDistance = useCallback((prevCoordinate, newCoordinate) => {
     return haversine(prevCoordinate, newCoordinate) || 0;
-  };
+  }, []);
 
-  const calcKcal = (distanceDelta) => {
+  const calcKcal = useCallback((distanceDelta) => {
     // Calculated as 7kcal per 0.1m
     return (distanceDelta / 0.1) * 7;
-  };
+  }, []);
 
-  const watchUserLocation = () => {
+  const watchUserLocation = useCallback(() => {
     Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.Balanced,
@@ -57,20 +57,20 @@ export default function App() {
           longitude,
         };
         setRegion({ latitude, longitude });
-        setMoveData((prevMoveData) => ({
-          kcal: calcKcal(
+        setMoveData((prevMoveData) => {
+          const distanceTravelled =
             prevMoveData.distanceTravelled +
-              calcDistance(prevMoveData.prevCoordinate, newCoordinate)
-          ),
-          distanceTravelled:
-            prevMoveData.distanceTravelled +
-            calcDistance(prevMoveData.prevCoordinate, newCoordinate),
-          routeCoordinates: [...prevMoveData.routeCoordinates, newCoordinate],
-          prevCoordinate: newCoordinate,
-        }));
+            calcDistance(prevMoveData.prevCoordinate, newCoordinate);
+          return {
+            kcal: calcKcal(distanceTravelled),
+            distanceTravelled,
+            routeCoordinates: [...prevMoveData.routeCoordinates, newCoordinate],
+            prevCoordinate: newCoordinate,
+          };
+        });
       }
     );
-  };
+  }, [calcDistance, calcKcal]);
 
   return (
     <Fragment>
